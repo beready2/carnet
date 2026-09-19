@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Carnet de domaine</title>
+<meta name="robots" content="noindex, nofollow, noarchive">
 <meta name="theme-color" content="#1B211E">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -335,8 +336,8 @@ nav button span.wrap{position:relative;display:block}
 "use strict";
 /* ============ état ============ */
 var KEY = "carnet-domaine.v1";
-var VERSION = "1.1";
-var PLAN = "./plan.jpg";   /* plan livré avec l'app ; un import le remplace */
+var VERSION = "1.3";
+var PLAN = null;   /* aucun plan livré : il est importé sur l'appareil et reste en local */
 var DEFAULT_CTX = ["Appels & mails","Par temps sec","Atelier","Tracteur & engins","Bétail","Écran & administratif","Courses & déplacements"];
 var COSTS = [{k:"5m",l:"5 min"},{k:"1h",l:"1 h"},{k:"dj",l:"Demi-journée"}];
 /* Nature du travail : pilote le symbole de la punaise. Chaque cle a un <symbol> dans le sprite. */
@@ -559,6 +560,15 @@ function renderMap(){
     ? '<div class="placing"><span>Touchez l\'emplacement de « '+esc((byId(UI.placing)||{title:""}).title)+' »</span><button id="cancel-place">Annuler</button></div>'
     : (UI.addHere ? '<div class="placing"><span>Touchez un point du plan pour y créer une tâche.</span><button id="cancel-place">Annuler</button></div>' : "");
 
+  if(!mapSrc()){
+    bar.innerHTML = "";
+    document.getElementById("mapfilter").innerHTML = "";
+    wrap.style.display = "none";
+    empty.innerHTML = '<div class="empty"><strong>Aucun plan import\u00e9</strong>'+
+      'Importez la vue a\u00e9rienne du domaine. Elle reste sur cet appareil et n\'est jamais envoy\u00e9e ailleurs.'+
+      '<div style="margin-top:16px"><button class="primary" id="imp1" style="display:inline-block;padding:11px 20px">Importer un plan</button></div></div>';
+    return;
+  }
   wrap.style.display = "block";
   empty.innerHTML = "";
   bar.innerHTML =
@@ -693,6 +703,7 @@ function openTask(id){
     if(b.dataset.place!==undefined){
       commit(t, sheet);
       if(b.dataset.place==="0"){ t.pin=null; save(); closeSheet(); render(); return; }
+      if(!mapSrc()){ closeSheet(); go("map"); return; }
       UI.placing = t.id; UI.addHere=false; closeSheet(); go("map"); return;
     }
     if(b.dataset.x==="close"){ closeSheet(); return; }

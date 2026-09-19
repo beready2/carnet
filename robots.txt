@@ -1,0 +1,4 @@
+# Lu uniquement si le site est deploye a la racine d'un domaine.
+# Sur un site de projet (sous-dossier), c'est la balise noindex de index.html qui agit.
+User-agent: *
+Disallow: /
