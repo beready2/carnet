@@ -235,6 +235,7 @@ nav button span.wrap{position:relative;display:block}
   <main>
     <!-- MAINTENANT -->
     <section class="pane on" id="pane-now">
+      <div id="backup-notice"></div>
       <div class="filters">
         <div class="flabel">Conditions réunies</div>
         <div class="chips" id="now-ctx"></div>
@@ -343,7 +344,7 @@ nav button span.wrap{position:relative;display:block}
 "use strict";
 /* ============ état ============ */
 var KEY = "carnet-domaine.v1";
-var VERSION = "1.5";
+var VERSION = "1.6";
 var PLAN = null;   /* aucun plan livré : il est importé sur l'appareil et reste en local */
 var DEFAULT_CTX = ["Appels & mails","Par temps sec","Atelier","Tracteur & engins","Bétail","Écran & administratif","Courses & déplacements","En ville"];
 var COSTS = [{k:"5m",l:"5 min"},{k:"1h",l:"1 h"},{k:"dj",l:"Demi-journée"}];
@@ -365,7 +366,7 @@ var NATURES = [
 function glyph(k){ return '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#g-'+(k||"repere")+'"></use></svg>'; }
 function natLabel(k){ for(var i=0;i<NATURES.length;i++) if(NATURES[i].k===k) return NATURES[i].l; return ""; }
 
-var S = { tasks:[], ctxs:DEFAULT_CTX.slice(), map:null, lastReview:null };
+var S = { tasks:[], ctxs:DEFAULT_CTX.slice(), map:null, lastReview:null, lastExport:null };
 var UI = { tab:"now", ctxFilter:[], costFilter:null, natFilter:[], zoom:1, placing:null, addHere:false, selPin:null };
 
 function save(){
@@ -377,7 +378,7 @@ function load(){
     var raw = localStorage.getItem(KEY);
     if(!raw) return;
     var d = JSON.parse(raw);
-    if(d && d.tasks) S = { tasks:d.tasks||[], ctxs:(d.ctxs&&d.ctxs.length?d.ctxs:DEFAULT_CTX.slice()), map:d.map||null, lastReview:d.lastReview||null };
+    if(d && d.tasks) S = { tasks:d.tasks||[], ctxs:(d.ctxs&&d.ctxs.length?d.ctxs:DEFAULT_CTX.slice()), map:d.map||null, lastReview:d.lastReview||null, lastExport:d.lastExport||null };
     if(S.ctxs.indexOf("En ville")<0){ S.ctxs.push("En ville"); save(); }
   }catch(e){ /* données illisibles : on repart propre */ }
 }
@@ -642,7 +643,7 @@ function render(){
   var od = S.tasks.filter(function(t){ return t.status==="todo" && t.due && daysBetween(today(),t.due)<0; }).length;
   document.getElementById("hcount").textContent = open+" ouverte"+(open>1?"s":"")+(od?" · "+od+" en retard":"");
 
-  renderNow(); renderAll(); renderCity(); renderWait(); renderMap();
+  renderNow(); renderAll(); renderCity(); renderWait(); renderMap(); renderBackupNotice();
 }
 
 /* ============ fiche tâche ============ */
@@ -824,6 +825,21 @@ function doExport(){
   a.download = "carnet-domaine-"+today()+".json";
   document.body.appendChild(a); a.click();
   setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  S.lastExport = today(); save(); render();
+}
+
+/* Les donnees ne vivent que dans ce navigateur : ce bandeau rappelle de les faire sortir
+   regulierement, avant un changement de telephone, une reinstallation ou un passage
+   accidentel en navigation privee (qui utilise un stockage a part, efface a la fermeture). */
+function renderBackupNotice(){
+  var el = document.getElementById("backup-notice");
+  if(!S.tasks.length){ el.innerHTML = ""; return; }
+  var days = S.lastExport ? daysBetween(S.lastExport, today()) : null;
+  if(days !== null && days < 14){ el.innerHTML = ""; return; }
+  var msg = S.lastExport
+    ? "Derni\u00e8re sauvegarde il y a "+days+" j."
+    : "Aucune sauvegarde n'a encore \u00e9t\u00e9 faite.";
+  el.innerHTML = "<div class=\"notice\"><span>"+msg+" Les t\u00e2ches ne vivent que sur cet appareil \u2014 un changement de t\u00e9l\u00e9phone ou un passage en navigation priv\u00e9e les efface.</span><button id=\"bak-now\">Exporter maintenant</button></div>";
 }
 
 /* ============ import du plan ============ */
@@ -878,6 +894,9 @@ document.getElementById("cap").addEventListener("keydown", function(e){ if(e.key
 document.querySelector("main").addEventListener("click", function(e){
   var rev = e.target.closest("#rev-ok");
   if(rev){ S.lastReview = today(); save(); render(); return; }
+
+  var bak = e.target.closest("#bak-now");
+  if(bak){ doExport(); return; }
 
   var imp = e.target.closest("#imp1,#imp2");
   if(imp){ document.getElementById("file-img").click(); return; }
@@ -961,7 +980,7 @@ document.getElementById("file-json").addEventListener("change", function(){
       var d = JSON.parse(fr.result);
       if(!d || !d.tasks) throw new Error("format");
       if(!confirm("Remplacer le contenu actuel par la sauvegarde ("+d.tasks.length+" tâches) ?")) return;
-      S = { tasks:d.tasks, ctxs:(d.ctxs&&d.ctxs.length?d.ctxs:DEFAULT_CTX.slice()), map:d.map||null, lastReview:d.lastReview||null };
+      S = { tasks:d.tasks, ctxs:(d.ctxs&&d.ctxs.length?d.ctxs:DEFAULT_CTX.slice()), map:d.map||null, lastReview:d.lastReview||null, lastExport:d.lastExport||null };
       save(); closeSheet(); render();
     }catch(err){ alert("Fichier non reconnu. Choisissez un export du Carnet de domaine."); }
   };
