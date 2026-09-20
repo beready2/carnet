@@ -73,7 +73,7 @@ main{flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-
 .pane.on{display:block}
 
 nav{
-  flex:0 0 auto;display:grid;grid-template-columns:repeat(4,1fr);
+  flex:0 0 auto;display:grid;grid-template-columns:repeat(5,1fr);
   border-top:1px solid var(--line);background:var(--card);
   padding-bottom:env(safe-area-inset-bottom);
 }
@@ -214,7 +214,8 @@ nav button span.wrap{position:relative;display:block}
 .seg button.on{background:var(--ink);color:var(--paper)}
 .actions{display:flex;gap:10px;margin-top:20px}
 .primary{flex:1;background:var(--eau);color:var(--on-accent);border-radius:var(--r);padding:13px;font-weight:600}
-.danger{border:1px solid var(--line);border-radius:var(--r);padding:13px 16px;color:var(--alerte)}
+.danger{border:1px solid var(--line);border-radius:var(--r);padding:13px 16px;color:var(--alerte);flex:1;text-align:center}
+.neutral{border:1px solid var(--line);border-radius:var(--r);padding:13px 16px;color:var(--ink-2);flex:1;text-align:center}
 .linkrow{display:flex;gap:16px;flex-wrap:wrap;margin-top:6px}
 .linkrow button{color:var(--eau);font-size:13.5px}
 .help{font-size:12.5px;color:var(--ink-3);line-height:1.5;margin-top:6px}
@@ -262,6 +263,11 @@ nav button span.wrap{position:relative;display:block}
       <div id="map-empty"></div>
     </section>
 
+    <!-- EN VILLE -->
+    <section class="pane" id="pane-city">
+      <div id="city-list"></div>
+    </section>
+
     <!-- ATTENTE -->
     <section class="pane" id="pane-wait">
       <div id="wait-list"></div>
@@ -272,6 +278,7 @@ nav button span.wrap{position:relative;display:block}
     <button data-tab="now" class="on"><span class="g">◈</span>Maintenant</button>
     <button data-tab="all"><span class="wrap g">☰<i class="badge" id="b-inbox" hidden></i></span>Liste</button>
     <button data-tab="map"><span class="g">◎</span>Carte</button>
+    <button data-tab="city"><span class="wrap g">⌂<i class="badge" id="b-city" hidden></i></span>En ville</button>
     <button data-tab="wait"><span class="wrap g">⧗<i class="badge" id="b-wait" hidden></i></span>Attente</button>
   </nav>
 </div>
@@ -336,9 +343,9 @@ nav button span.wrap{position:relative;display:block}
 "use strict";
 /* ============ état ============ */
 var KEY = "carnet-domaine.v1";
-var VERSION = "1.3";
+var VERSION = "1.5";
 var PLAN = null;   /* aucun plan livré : il est importé sur l'appareil et reste en local */
-var DEFAULT_CTX = ["Appels & mails","Par temps sec","Atelier","Tracteur & engins","Bétail","Écran & administratif","Courses & déplacements"];
+var DEFAULT_CTX = ["Appels & mails","Par temps sec","Atelier","Tracteur & engins","Bétail","Écran & administratif","Courses & déplacements","En ville"];
 var COSTS = [{k:"5m",l:"5 min"},{k:"1h",l:"1 h"},{k:"dj",l:"Demi-journée"}];
 /* Nature du travail : pilote le symbole de la punaise. Chaque cle a un <symbol> dans le sprite. */
 var NATURES = [
@@ -371,6 +378,7 @@ function load(){
     if(!raw) return;
     var d = JSON.parse(raw);
     if(d && d.tasks) S = { tasks:d.tasks||[], ctxs:(d.ctxs&&d.ctxs.length?d.ctxs:DEFAULT_CTX.slice()), map:d.map||null, lastReview:d.lastReview||null };
+    if(S.ctxs.indexOf("En ville")<0){ S.ctxs.push("En ville"); save(); }
   }catch(e){ /* données illisibles : on repart propre */ }
 }
 
@@ -535,6 +543,16 @@ function renderAll(){
 }
 
 /* ============ onglet ATTENTE ============ */
+function renderCity(){
+  var c = S.tasks.filter(function(t){ return t.status==="todo" && t.ctx.indexOf("En ville")>=0; }).sort(sortTasks);
+  var el = document.getElementById("city-list");
+  if(!c.length){
+    el.innerHTML = '<div class="empty"><strong>Rien à faire en ville</strong>Cochez « En ville » parmi les conditions d\'une tâche pour qu\'elle apparaisse ici.</div>';
+    return;
+  }
+  el.innerHTML = listHTML(c);
+}
+
 function renderWait(){
   var w = waiting().sort(function(a,b){
     return (a.waitingSince||"9999") < (b.waitingSince||"9999") ? -1 : 1;
@@ -616,12 +634,15 @@ function render(){
   var late = S.tasks.filter(function(t){ return t.status==="waiting" && t.waitingSince && daysBetween(t.waitingSince,today())>=14; }).length;
   document.getElementById("b-wait").hidden = late===0;
   document.getElementById("b-wait").textContent = late;
+  var cn = S.tasks.filter(function(t){ return t.status==="todo" && t.ctx.indexOf("En ville")>=0; }).length;
+  document.getElementById("b-city").hidden = cn===0;
+  document.getElementById("b-city").textContent = cn;
 
   var open = S.tasks.filter(function(t){ return t.status==="todo"; }).length;
   var od = S.tasks.filter(function(t){ return t.status==="todo" && t.due && daysBetween(today(),t.due)<0; }).length;
   document.getElementById("hcount").textContent = open+" ouverte"+(open>1?"s":"")+(od?" · "+od+" en retard":"");
 
-  renderNow(); renderAll(); renderWait(); renderMap();
+  renderNow(); renderAll(); renderCity(); renderWait(); renderMap();
 }
 
 /* ============ fiche tâche ============ */
@@ -672,7 +693,8 @@ function openTask(id){
        '<div class="linkrow"><button data-place="1">'+(t.pin?"Déplacer la punaise":"Placer sur le plan")+'</button>'+
        (t.pin?'<button data-place="0">Retirer la punaise</button>':"")+'</div></div>';
 
-  h += '<div class="actions"><button class="primary" data-x="save">Enregistrer</button><button class="danger" data-x="del">Supprimer</button></div>';
+  h += '<div class="actions"><button class="primary" data-x="save">Enregistrer</button></div>';
+  h += '<div class="actions" style="margin-top:10px"><button class="neutral" data-x="dup">Dupliquer</button><button class="danger" data-x="del">Supprimer</button></div>';
   openSheet(h);
 
   var sheet = document.getElementById("sheet");
@@ -708,6 +730,13 @@ function openTask(id){
     }
     if(b.dataset.x==="close"){ closeSheet(); return; }
     if(b.dataset.x==="save"){ commit(t,sheet); save(); closeSheet(); render(); return; }
+    if(b.dataset.x==="dup"){
+      commit(t,sheet); save();
+      var copy = newTask(t.title, { note:t.note, ctx:t.ctx.slice(), cost:t.cost, nature:t.nature, important:t.important, recur:t.recur });
+      closeSheet(); render(); openTask(copy.id);
+      setTimeout(function(){ var ti=document.getElementById("f-title"); if(ti){ ti.focus(); ti.select(); } }, 30);
+      return;
+    }
     if(b.dataset.x==="del"){
       if(confirm("Supprimer définitivement « "+t.title+" » ?")){
         S.tasks = S.tasks.filter(function(x){ return x.id!==t.id; });
