@@ -221,6 +221,16 @@ nav button span.wrap{position:relative;display:block}
 .help{font-size:12.5px;color:var(--ink-3);line-height:1.5;margin-top:6px}
 .kv{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line-soft);font-size:14px;align-items:center}
 .kv span{color:var(--ink-2)}
+/* propositions */
+.ptog{font:inherit;color:inherit;display:flex;align-items:center;gap:8px;padding:0}
+.prow{padding:12px 16px;border-bottom:1px solid var(--line-soft);background:var(--paper)}
+.prow .rtitle{font-size:15px}
+.pnote{font-size:12.5px;color:var(--ink-3);margin-top:5px;line-height:1.45;word-break:break-word}
+.pact{display:flex;gap:10px;margin-top:9px}
+.pact button{border:1px solid var(--line);border-radius:var(--r);padding:6px 13px;font-size:13px;color:var(--ink-2)}
+.pact button.go{background:var(--eau);border-color:var(--eau);color:var(--on-accent);font-weight:600}
+.pmore{display:block;margin:12px 16px;color:var(--eau);font-size:13.5px}
+.pnow{color:var(--prairie);font-weight:500}
 </style>
 </head>
 <body>
@@ -339,12 +349,13 @@ nav button span.wrap{position:relative;display:block}
 
 <input type="file" id="file-img" accept="image/*" hidden>
 <input type="file" id="file-json" accept="application/json,.json" hidden>
+<input type="file" id="file-props" accept="application/json,.json" hidden>
 
 <script>
 "use strict";
 /* ============ état ============ */
 var KEY = "carnet-domaine.v1";
-var VERSION = "1.6";
+var VERSION = "1.7";
 var PLAN = null;   /* aucun plan livré : il est importé sur l'appareil et reste en local */
 var DEFAULT_CTX = ["Appels & mails","Par temps sec","Atelier","Tracteur & engins","Bétail","Écran & administratif","Courses & déplacements","En ville"];
 var COSTS = [{k:"5m",l:"5 min"},{k:"1h",l:"1 h"},{k:"dj",l:"Demi-journée"}];
@@ -366,8 +377,29 @@ var NATURES = [
 function glyph(k){ return '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#g-'+(k||"repere")+'"></use></svg>'; }
 function natLabel(k){ for(var i=0;i<NATURES.length;i++) if(NATURES[i].k===k) return NATURES[i].l; return ""; }
 
-var S = { tasks:[], ctxs:DEFAULT_CTX.slice(), map:null, lastReview:null, lastExport:null };
-var UI = { tab:"now", ctxFilter:[], costFilter:null, natFilter:[], zoom:1, placing:null, addHere:false, selPin:null };
+var PKEY = "carnet-domaine.props.v1";
+var SCHEMA = "carnet-propositions/1";
+var SRCS = [
+  {k:"vg",  l:"Vue globale",        to:"à cocher par vous dans la feuille feuille_de_route"},
+  {k:"fer", l:"Ferme",              to:"à signaler au fil Ferme"},
+  {k:"cal", l:"Calendrier",         to:"à signaler au fil Ferme"},
+  {k:"fin", l:"Finance",            to:"à signaler au fil Finance"},
+  {k:"sec", l:"Secourisme",         to:"à signaler au fil Secourisme"},
+  {k:"phy", l:"Physique",           to:"à signaler au fil Physique"},
+  {k:"tir", l:"Tir",                to:"à signaler au fil Tir"}
+];
+function srcLabel(k){ for(var i=0;i<SRCS.length;i++) if(SRCS[i].k===k) return SRCS[i].l; return k; }
+var MOIS = ["jan","fév","mars","avr","mai","juin","juil","août","sept","oct","nov","déc"];
+
+var S = { tasks:[], ctxs:DEFAULT_CTX.slice(), map:null, lastReview:null, lastExport:null, dismissed:[], closed:[] };
+var P = { generated:null, items:[] };   /* propositions en attente, hors de la sauvegarde : on les réimporte depuis le fichier */
+var UI = { tab:"now", ctxFilter:[], costFilter:null, natFilter:[], zoom:1, placing:null, addHere:false, selPin:null, pOpen:false, pSrc:"", pLimit:30 };
+
+function mkState(d){
+  return { tasks:d.tasks||[], ctxs:(d.ctxs&&d.ctxs.length?d.ctxs:DEFAULT_CTX.slice()), map:d.map||null,
+           lastReview:d.lastReview||null, lastExport:d.lastExport||null, dismissed:(d.dismissed&&d.dismissed.length?d.dismissed:[]),
+           closed:(d.closed&&d.closed.length?d.closed:[]) };
+}
 
 function save(){
   try{ localStorage.setItem(KEY, JSON.stringify(S)); }
@@ -378,9 +410,21 @@ function load(){
     var raw = localStorage.getItem(KEY);
     if(!raw) return;
     var d = JSON.parse(raw);
-    if(d && d.tasks) S = { tasks:d.tasks||[], ctxs:(d.ctxs&&d.ctxs.length?d.ctxs:DEFAULT_CTX.slice()), map:d.map||null, lastReview:d.lastReview||null, lastExport:d.lastExport||null };
+    if(d && d.tasks) S = mkState(d);
     if(S.ctxs.indexOf("En ville")<0){ S.ctxs.push("En ville"); save(); }
   }catch(e){ /* données illisibles : on repart propre */ }
+}
+function saveProps(){
+  try{ localStorage.setItem(PKEY, JSON.stringify(P)); }
+  catch(e){ alert("Sauvegarde des propositions impossible : mémoire du navigateur pleine."); }
+}
+function loadProps(){
+  try{
+    var raw = localStorage.getItem(PKEY);
+    if(!raw) return;
+    var d = JSON.parse(raw);
+    if(d && d.items && d.items.length!==undefined) P = { generated:d.generated||null, items:d.items };
+  }catch(e){ /* propositions illisibles : on repart sans */ }
 }
 
 /* ============ dates ============ */
@@ -434,6 +478,148 @@ function newTask(title, extra){
   if(extra) for(var k in extra) t[k]=extra[k];
   S.tasks.push(t); save(); return t;
 }
+/* ============ propositions ============ */
+/* Fichier JSON a schema strict, genere hors de l'application. On ne garde que les champs de la liste
+   blanche ; tout le reste est ignore. Rien n'est jamais ecrit vers une feuille. */
+function isStr(v,max){ return typeof v==="string" && v.length<=max; }
+function cleanItem(it){
+  if(!it || typeof it!=="object") return null;
+  if(!isStr(it.ref,24) || !/^[A-Za-z0-9._-]+$/.test(it.ref)) return null;
+  var okSrc = false; for(var i=0;i<SRCS.length;i++) if(SRCS[i].k===it.src) okSrc=true;
+  if(!okSrc) return null;
+  if(!isStr(it.title,220) || !it.title.trim()) return null;
+  var o = { ref:it.ref, src:it.src, title:it.title.trim() };
+  if(it.note!==undefined){ if(!isStr(it.note,600)) return null; if(it.note) o.note = it.note; }
+  if(it.nature){ if(natLabel(it.nature)==="") return null; o.nature = it.nature; }
+  if(it.ctx){
+    if(Object.prototype.toString.call(it.ctx)!=="[object Array]") return null;
+    o.ctx = it.ctx.filter(function(c){ return typeof c==="string" && S.ctxs.indexOf(c)>=0; });
+  }
+  if(it.cost){ if(costLabel(it.cost)==="") return null; o.cost = it.cost; }
+  if(it.due){ if(!isStr(it.due,10) || !/^\d{4}-\d{2}-\d{2}$/.test(it.due)) return null; o.due = it.due; }
+  if(it.months){
+    if(Object.prototype.toString.call(it.months)!=="[object Array]" || it.months.length>12) return null;
+    for(var j=0;j<it.months.length;j++){ var m=it.months[j]; if(typeof m!=="number" || m<1 || m>12 || m%1!==0) return null; }
+    o.months = it.months.slice();
+  }
+  if(it.important===true) o.important = true;
+  if(it.owner){ if(!isStr(it.owner,30)) return null; o.owner = it.owner; }
+  if(it.etat){ if(!isStr(it.etat,40)) return null; o.etat = it.etat; }
+  if(it.horizon){ if(!isStr(it.horizon,40)) return null; o.horizon = it.horizon; }
+  if(it.recur){ if(typeof it.recur!=="number" || it.recur<1 || it.recur>365 || it.recur%1!==0) return null; o.recur = it.recur; }
+  return o;
+}
+function importPropsText(text){
+  var d;
+  try{ d = JSON.parse(text); }catch(e){ return {error:"Ce n'est pas un fichier JSON lisible."}; }
+  if(!d || d.schema!==SCHEMA) return {error:"Fichier non reconnu : le schéma attendu est « "+SCHEMA+" »."};
+  if(!isStr(d.generated,10) || !/^\d{4}-\d{2}-\d{2}$/.test(d.generated)) return {error:"Date de génération absente ou illisible."};
+  if(Object.prototype.toString.call(d.items)!=="[object Array]" || d.items.length>500) return {error:"Liste de propositions absente, ou de plus de 500 lignes."};
+  var res = { added:0, updated:0, skipped:0, rejected:0 };
+  d.items.forEach(function(raw){
+    var c = cleanItem(raw);
+    if(!c){ res.rejected++; return; }
+    if(S.dismissed.indexOf(c.ref)>=0 || S.closed.indexOf(c.ref)>=0 || S.tasks.some(function(t){ return t.ref===c.ref; })){ res.skipped++; return; }
+    for(var i=0;i<P.items.length;i++){
+      if(P.items[i].ref===c.ref){ P.items[i]=c; res.updated++; return; }
+    }
+    P.items.push(c); res.added++;
+  });
+  if(!P.generated || d.generated>P.generated) P.generated = d.generated;
+  saveProps();
+  return res;
+}
+function propFind(ref){ for(var i=0;i<P.items.length;i++) if(P.items[i].ref===ref) return i; return -1; }
+function takeProp(ref){
+  var i = propFind(ref); if(i<0) return;
+  var it = P.items[i];
+  var note = it.note || "";
+  var tail = "Source : "+srcLabel(it.src)+" "+it.ref+(it.horizon?" — "+it.horizon:"")+(it.owner?" — porteur : "+it.owner:"");
+  newTask(it.title, { note:(note?note+"\n":"")+tail, ctx:(it.ctx||[]).slice(), cost:it.cost||null, nature:it.nature||null,
+                      due:it.due||null, important:!!it.important, recur:it.recur||null, ref:it.ref, src:it.src });
+  P.items.splice(i,1); saveProps();
+}
+function dismissProp(ref){
+  var i = propFind(ref); if(i<0) return;
+  if(S.dismissed.indexOf(ref)<0) S.dismissed.push(ref);
+  P.items.splice(i,1); saveProps(); save();
+}
+function inWindow(it){
+  if(!it.months || !it.months.length) return false;
+  return it.months.indexOf(new Date().getMonth()+1)>=0;
+}
+function propRank(it){
+  if(it.due) return 0;
+  if(inWindow(it)) return 1;
+  if(!it.months) return 2;
+  return 3;
+}
+function propSort(a,b){
+  var ra=propRank(a), rb=propRank(b);
+  if(ra!==rb) return ra-rb;
+  if(a.due && b.due && a.due!==b.due) return a.due<b.due?-1:1;
+  return a.ref<b.ref?-1:(a.ref>b.ref?1:0);
+}
+function propRowHTML(it){
+  var meta = [];
+  if(it.due){ var dt = dueText({due:it.due}); if(dt) meta.push('<b class="'+dt.cls+'">'+esc(dt.txt)+'</b>'); }
+  if(it.months){
+    var mm = it.months.slice().sort(function(a,b){ return a-b; }).map(function(m){ return MOIS[m-1]; }).join(", ");
+    meta.push(inWindow(it) ? '<span class="pnow">ce mois-ci · '+esc(mm)+'</span>' : '<span>'+esc(mm)+'</span>');
+  }
+  if(it.horizon) meta.push('<span>'+esc(it.horizon)+'</span>');
+  if(it.etat) meta.push('<span>'+esc(it.etat)+'</span>');
+  if(it.owner) meta.push('<span>'+esc(it.owner)+'</span>');
+  if(it.cost) meta.push('<span>'+costLabel(it.cost)+'</span>');
+  if(it.nature) meta.push('<span>'+glyph(it.nature)+" "+esc(natLabel(it.nature))+'</span>');
+  meta.push('<span class="tag">'+esc(it.ref)+'</span>');
+  return '<div class="prow" data-pref="'+esc(it.ref)+'">'+
+    '<div class="rtitle">'+esc(it.title)+'</div>'+
+    '<div class="rmeta meta">'+meta.join("")+'</div>'+
+    (it.note?'<div class="pnote">'+esc(it.note)+'</div>':'')+
+    '<div class="pact"><button class="go" data-p="take" data-ref="'+esc(it.ref)+'">Prendre</button>'+
+    '<button data-p="skip" data-ref="'+esc(it.ref)+'">Écarter</button></div></div>';
+}
+function propsHTML(){
+  if(!P.items.length) return "";
+  var h = '<div class="section-title meta"><button class="ptog" data-p="toggle">'+(UI.pOpen?"▾":"▸")+
+          ' Propositions <span class="n">'+P.items.length+'</span></button></div>';
+  if(!UI.pOpen) return h;
+  if(P.generated){
+    var age = daysBetween(P.generated, today());
+    if(age>30) h += '<div class="notice"><span>Ces propositions datent de '+age+' jours : les feuilles ont pu changer. Régénérez le fichier avant de vous y fier.</span></div>';
+  }
+  var counts = {};
+  P.items.forEach(function(it){ counts[it.src]=(counts[it.src]||0)+1; });
+  h += '<div class="filters"><div class="chips">'+
+       '<button class="chip'+(UI.pSrc===""?" on":"")+'" data-p="src" data-src="">Toutes</button>'+
+       SRCS.filter(function(x){ return counts[x.k]; }).map(function(x){
+         return '<button class="chip'+(UI.pSrc===x.k?" on":"")+'" data-p="src" data-src="'+x.k+'">'+esc(x.l)+' '+counts[x.k]+'</button>';
+       }).join("")+'</div></div>';
+  var list = P.items.filter(function(it){ return !UI.pSrc || it.src===UI.pSrc; }).sort(propSort);
+  h += '<div class="help" style="padding:8px 16px 0">Rien ici n\'est une tâche tant que vous ne la prenez pas. « Écarter » la retire pour de bon (réaffichable dans les Réglages).</div>';
+  h += list.slice(0, UI.pLimit).map(propRowHTML).join("");
+  if(list.length>UI.pLimit) h += '<button class="pmore" data-p="more">Afficher la suite ('+(list.length-UI.pLimit)+' de plus)</button>';
+  return h;
+}
+function reportList(){
+  return S.tasks.filter(function(t){ return t.ref && t.status==="done" && !t.reported; });
+}
+function reportText(){
+  var by = {};
+  reportList().forEach(function(t){ (by[t.src]=by[t.src]||[]).push(t); });
+  var out = [];
+  SRCS.forEach(function(x){
+    if(!by[x.k]) return;
+    out.push(srcLabel(x.k)+" — "+x.to+" :");
+    by[x.k].forEach(function(t){
+      var d = new Date(t.doneAt);
+      out.push("  "+t.ref+" — fait le "+iso(d).split("-").reverse().slice(0,2).join("/")+" — "+t.title);
+    });
+  });
+  return out.join("\n");
+}
+
 function byId(id){ for(var i=0;i<S.tasks.length;i++) if(S.tasks[i].id===id) return S.tasks[i]; return null; }
 function toggleDone(t){
   if(t.status==="done"){ t.status="todo"; t.doneAt=null; save(); render(); return; }
@@ -464,6 +650,7 @@ function rowHTML(t){
     var since = t.waitingSince ? daysBetween(t.waitingSince, today()) : 0;
     meta.push('<b>attend '+esc(t.waitingFor)+' — '+since+' j</b>');
   }
+  if(t.ref) meta.push('<span class="tag">'+esc(t.ref)+'</span>');
   if(t.note) meta.push('<span class="tag">note</span>');
   return '<div class="row u'+u+(t.status==="done"?" is-done":"")+'" data-id="'+t.id+'">'+
     '<div class="gutter"></div>'+
@@ -527,12 +714,12 @@ function renderAll(){
   var done = S.tasks.filter(function(t){ return t.status==="done"; })
                     .sort(function(a,b){ return b.doneAt-a.doneAt; }).slice(0,15);
 
-  var h = "";
+  var h = propsHTML();
   h += sectionHTML("À clarifier", inb.sort(sortTasks), "Quelle est la prochaine action concrète ? Ouvrez la ligne et donnez-lui au moins une condition.");
   h += sectionHTML("À faire", rest);
   h += sectionHTML("Terminé récemment", done);
   if(!S.tasks.length){
-    h = '<div class="empty"><strong>Carnet vide</strong>Notez tout ce qui traîne en tête, sans trier. Le classement vient après.</div>';
+    h += '<div class="empty"><strong>Carnet vide</strong>Notez tout ce qui traîne en tête, sans trier. Le classement vient après.</div>';
   }
   document.getElementById("all-list").innerHTML = h;
 
@@ -779,12 +966,18 @@ function openSettings(){
   h += '<div class="kv"><span>Tâches enregistrées</span><b>'+S.tasks.length+'</b></div>';
   h += '<div class="kv"><span>Espace utilisé</span><b>'+(bytes/1048576).toFixed(2)+' Mo</b></div>';
   h += '<div class="kv"><span>Dernière revue</span><b>'+(S.lastReview?frDate(S.lastReview):"jamais")+'</b></div>';
-  h += '<div class="kv"><span>Plan affiché</span><b>'+(S.map?"importé":"livré avec l\'app")+'</b></div>';
+  h += '<div class="kv"><span>Plan</span><b>'+(S.map?"importé":"aucun")+'</b></div>';
+  h += '<div class="kv"><span>Propositions en attente</span><b>'+P.items.length+(P.generated?" · fichier du "+frDate(P.generated):"")+'</b></div>';
   h += '<div class="kv"><span>Version</span><b>'+VERSION+'</b></div>';
-  if(S.map) h += '<div class="field" style="margin-top:20px"><label>Plan</label><div class="linkrow"><button data-s="resetmap">Revenir au plan d\'origine</button></div></div>';
   h += '<div class="field" style="margin-top:20px"><label>Sauvegarde</label>'+
        '<div class="linkrow"><button data-s="export">Exporter un fichier</button><button data-s="import">Restaurer un fichier</button></div>'+
        '<div class="help">Les données vivent uniquement dans ce navigateur. Un nettoyage de cache, un changement de téléphone ou le mode navigation privée les efface. Exportez tous les mois.</div></div>';
+  var nrep = reportList().length;
+  h += '<div class="field" style="margin-top:20px"><label>Propositions</label>'+
+       '<div class="linkrow"><button data-s="props-file">Importer un fichier</button><button data-s="props-paste">Coller du texte</button></div>'+
+       '<div class="linkrow"><button data-s="report">À reporter dans les feuilles ('+nrep+')</button>'+
+       (S.dismissed.length?'<button data-s="undismiss">Réafficher les écartées ('+S.dismissed.length+')</button>':'')+'</div>'+
+       '<div class="help">Le fichier est préparé hors de l\'application et gardé dans votre espace privé, jamais dans le dépôt. L\'import fusionne : il ne remplace rien. L\'application n\'écrit jamais dans les feuilles.</div></div>';
   h += '<div class="field"><label>Conditions d\'exécution</label><div class="chips">'+
        S.ctxs.map(function(c){ return '<button class="chip" data-delctx="'+esc(c)+'">'+esc(c)+' ✕</button>'; }).join("")+
        '</div><div class="help">Retirer une condition la décroche des tâches qui la portent.</div></div>';
@@ -804,14 +997,18 @@ function openSettings(){
     if(a==="close") closeSheet();
     if(a==="export") doExport();
     if(a==="import") document.getElementById("file-json").click();
-    if(a==="resetmap"){
-      if(confirm("Revenir au plan livré avec l'app ? Les punaises gardent leurs coordonnées relatives.")){
-        S.map = null; save(); closeSheet(); render();
+    if(a==="props-file") document.getElementById("file-props").click();
+    if(a==="props-paste") openPasteProps();
+    if(a==="report") openReport();
+    if(a==="undismiss"){
+      if(confirm("Réafficher les "+S.dismissed.length+" propositions écartées (à la prochaine importation du fichier) ?")){
+        S.dismissed = []; save(); closeSheet(); openSettings();
       }
       return;
     }
     if(a==="purge"){
       if(confirm("Supprimer définitivement toutes les tâches terminées ?")){
+        S.tasks.forEach(function(t){ if(t.status==="done" && t.ref && S.closed.indexOf(t.ref)<0) S.closed.push(t.ref); });
         S.tasks = S.tasks.filter(function(t){ return t.status!=="done"; });
         save(); closeSheet(); render();
       }
@@ -819,13 +1016,64 @@ function openSettings(){
   };
 }
 function doExport(){
+  S.lastExport = today();   /* avant la sérialisation : le fichier porte sa propre date */
   var blob = new Blob([JSON.stringify(S)], {type:"application/json"});
   var a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = "carnet-domaine-"+today()+".json";
   document.body.appendChild(a); a.click();
   setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
-  S.lastExport = today(); save(); render();
+  save(); render();
+}
+
+function showImportResult(r){
+  if(r.error){ alert(r.error); return; }
+  alert("Propositions : "+r.added+" nouvelle"+(r.added>1?"s":"")+", "+r.updated+" mise"+(r.updated>1?"s":"")+" à jour, "+
+        r.skipped+" ignorée"+(r.skipped>1?"s":"")+" (déjà prises ou écartées), "+r.rejected+" rejetée"+(r.rejected>1?"s":"")+".");
+  UI.pOpen = true; UI.pLimit = 30; closeSheet(); go("all");
+}
+function openPasteProps(){
+  var h = '<div class="sheet-head"><h2>Coller des propositions</h2><button data-x="close">Fermer</button></div>';
+  h += '<div class="field"><label for="f-paste">Contenu du fichier de propositions</label><textarea id="f-paste" style="min-height:180px" placeholder="{ &quot;schema&quot;: &quot;carnet-propositions/1&quot;, … }"></textarea></div>';
+  h += '<div class="actions"><button class="primary" data-x="paste-go">Importer</button></div>';
+  openSheet(h);
+  document.getElementById("sheet").onclick = function(e){
+    var b = e.target.closest("button"); if(!b) return;
+    if(b.dataset.x==="close") closeSheet();
+    if(b.dataset.x==="paste-go"){
+      var v = document.getElementById("f-paste").value;
+      if(!v.trim()) return;
+      showImportResult(importPropsText(v));
+    }
+  };
+}
+function openReport(){
+  var txt = reportText();
+  var h = '<div class="sheet-head"><h2>À reporter dans les feuilles</h2><button data-x="close">Fermer</button></div>';
+  if(!txt){
+    h += '<div class="empty"><strong>Rien à reporter</strong>Les propositions que vous prenez puis cochez apparaissent ici, avec la feuille ou le fil à prévenir.</div>';
+    openSheet(h);
+  } else {
+    h += '<div class="field"><label for="f-rep">Tâches faites ici, à signaler vous-même</label><textarea id="f-rep" readonly style="min-height:180px">'+esc(txt)+'</textarea></div>';
+    h += '<div class="help">L\'application n\'écrit jamais dans une feuille. Cochez vous-même la feuille feuille_de_route ; pour les autres, prévenez le fil concerné.</div>';
+    h += '<div class="actions"><button class="neutral" data-x="rep-copy">Copier</button><button class="primary" data-x="rep-done">C\'est reporté</button></div>';
+    openSheet(h);
+  }
+  document.getElementById("sheet").onclick = function(e){
+    var b = e.target.closest("button"); if(!b) return;
+    var x = b.dataset.x;
+    if(x==="close") closeSheet();
+    if(x==="rep-copy"){
+      var ta = document.getElementById("f-rep");
+      try{ ta.select(); ta.setSelectionRange(0, 99999); document.execCommand("copy"); }catch(err){}
+    }
+    if(x==="rep-done"){
+      if(confirm("Marquer ces "+reportList().length+" tâches comme reportées ?")){
+        reportList().forEach(function(t){ t.reported = true; });
+        save(); closeSheet(); render();
+      }
+    }
+  };
 }
 
 /* Les donnees ne vivent que dans ce navigateur : ce bandeau rappelle de les faire sortir
@@ -892,6 +1140,18 @@ document.getElementById("cap-go").addEventListener("click", capture);
 document.getElementById("cap").addEventListener("keydown", function(e){ if(e.key==="Enter") capture(); });
 
 document.querySelector("main").addEventListener("click", function(e){
+  var pb = e.target.closest("[data-p]");
+  if(pb){
+    var pa = pb.dataset.p;
+    if(pa==="toggle"){ UI.pOpen = !UI.pOpen; renderAll(); return; }
+    if(pa==="src"){ UI.pSrc = pb.dataset.src || ""; UI.pLimit = 30; renderAll(); return; }
+    if(pa==="more"){ UI.pLimit += 30; renderAll(); return; }
+    if(pa==="take"){ takeProp(pb.dataset.ref); render(); return; }
+    if(pa==="skip"){
+      if(confirm("Écarter cette proposition ? Elle ne reviendra plus à l'importation.")){ dismissProp(pb.dataset.ref); render(); }
+      return;
+    }
+  }
   var rev = e.target.closest("#rev-ok");
   if(rev){ S.lastReview = today(); save(); render(); return; }
 
@@ -980,15 +1240,24 @@ document.getElementById("file-json").addEventListener("change", function(){
       var d = JSON.parse(fr.result);
       if(!d || !d.tasks) throw new Error("format");
       if(!confirm("Remplacer le contenu actuel par la sauvegarde ("+d.tasks.length+" tâches) ?")) return;
-      S = { tasks:d.tasks, ctxs:(d.ctxs&&d.ctxs.length?d.ctxs:DEFAULT_CTX.slice()), map:d.map||null, lastReview:d.lastReview||null, lastExport:d.lastExport||null };
+      S = mkState(d);
       save(); closeSheet(); render();
     }catch(err){ alert("Fichier non reconnu. Choisissez un export du Carnet de domaine."); }
   };
   fr.readAsText(f);
 });
 
+document.getElementById("file-props").addEventListener("change", function(){
+  var f = this.files && this.files[0]; this.value = "";
+  if(!f) return;
+  var fr = new FileReader();
+  fr.onload = function(){ showImportResult(importPropsText(fr.result)); };
+  fr.readAsText(f);
+});
+
 /* ============ démarrage ============ */
 load();
+loadProps();
 render();
 
 /* ============ service worker : fonctionnement hors ligne ============ */

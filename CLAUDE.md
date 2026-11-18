@@ -23,17 +23,38 @@ restent sur l'appareil.
   n'écrit jamais dans une feuille Google et n'en lit aucune par le réseau.
 
 ## Où vivent les données
-Uniquement dans le navigateur de l'appareil, sous la clé `carnet-domaine.v1` du `localStorage` :
-tâches, conditions d'exécution, dates de revue et d'export, et le plan importé (JPEG réduit à
-1 800 px, encodé dans le même objet). Aucune synchronisation, aucun serveur.
+Uniquement dans le navigateur de l'appareil, sous deux clés du `localStorage` :
+- `carnet-domaine.v1` : tâches (avec, pour une proposition prise, sa référence et sa source),
+  conditions d'exécution, dates de revue et d'export, références écartées ou terminées, et le plan
+  importé (JPEG réduit à 1 800 px, encodé dans le même objet) ;
+- `carnet-domaine.props.v1` : propositions en attente, importées depuis un fichier.
+Aucune synchronisation, aucun serveur.
 Le plan n'est jamais livré avec le code (`PLAN = null`) : il est importé sur l'appareil.
 La navigation privée de Safari utilise un stockage à part, effacé à la fermeture : ne jamais
 ouvrir l'application ainsi.
 
 ## Sauvegarde
-Réglages → Exporter un fichier produit un `.json` (tâches et plan). Restaurer remplace tout le
-contenu de l'appareil. Un bandeau rappelle l'export au bout de 14 jours. Le fichier reste sur
+Réglages → Exporter un fichier produit un `.json` (tâches, plan, références écartées ou terminées).
+Restaurer remplace tout le contenu de l'appareil. Les propositions en attente ne sont pas dans
+l'export : on les réimporte depuis le fichier de propositions. Un bandeau rappelle l'export au bout de 14 jours. Le fichier reste sur
 l'appareil ou dans un espace privé de l'utilisateur, jamais dans ce dépôt.
+
+## Propositions (depuis la 1.7)
+L'application affiche en « propositions » des actions tirées des feuilles de la propriété. Elle ne lit
+aucune feuille et n'écrit dans aucune : elle importe un fichier JSON préparé hors de l'application.
+- Schéma `carnet-propositions/1`. Liste blanche de champs : `ref`, `src`, `title`, `note`, `nature`,
+  `ctx`, `cost`, `due`, `months`, `important`, `owner`, `etat`, `horizon`, `recur`. Tout autre champ
+  est ignoré ; une ligne invalide est rejetée ; un fichier au mauvais schéma est refusé en entier.
+- Import par fusion : idempotent, ne supprime ni ne remplace rien. Une proposition prise garde sa
+  référence ; une proposition écartée ou terminée ne revient pas à l'importation suivante.
+- Les propositions s'affichent en tête de l'onglet Liste, repliées. Rien n'y est une tâche tant que
+  l'utilisateur ne la prend pas.
+- « À reporter dans les feuilles » liste les tâches faites : c'est l'utilisateur qui les signale. Ne
+  jamais ajouter d'écriture vers une feuille.
+- Le fichier de propositions contient des données réelles : il ne vit jamais dans ce dépôt (ni
+  `carnet-propositions-*.json`, ni extrait collé dans le code, un commentaire, un test ou un message
+  de commit). Le `.gitignore` aide pour git, pas pour le téléversement web.
+- Tout jeu d'essai du dépôt ou de la vérification est inventé et générique.
 
 ## Après toute modification des fichiers servis
 1. Incrémenter `VERSION` dans `index.html` (affichée dans Réglages).
@@ -60,3 +81,6 @@ Il n'y a pas de tests automatisés. Avant tout dépôt :
 2. Dans l'application : noter une tâche, la cocher (si elle est récurrente, la suivante doit se
    recréer), la dupliquer, importer un plan et y poser une punaise, exporter puis restaurer, couper
    le réseau et recharger.
+3. Propositions, avec un fichier inventé : importer deux fois (la seconde fois, aucun doublon),
+   prendre une proposition, en écarter une, réimporter (ni l'une ni l'autre ne revient), cocher la
+   tâche prise et lire la liste « à reporter », essayer un fichier au mauvais schéma.

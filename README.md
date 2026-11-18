@@ -41,3 +41,10 @@ restaurable par **Restaurer un fichier**. Ce fichier ne doit jamais entrer dans 
 
 Le plan n'est pas livré avec le code : onglet Carte → importer une image, réduite à
 1 800 px et stockée dans le navigateur. Les punaises gardent des coordonnées relatives.
+
+## Propositions
+
+Réglages → Propositions : importer un fichier JSON (schéma `carnet-propositions/1`, voir
+`CLAUDE.md`) ou en coller le texte. Les propositions s'affichent en tête de la Liste ; on les prend
+ou on les écarte. L'application n'écrit jamais dans une feuille : « À reporter dans les feuilles »
+liste ce qu'il faut signaler soi-même. Le fichier de propositions ne va jamais dans ce dépôt.
