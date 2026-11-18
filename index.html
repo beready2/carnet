@@ -12,9 +12,6 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Fira+Sans+Condensed:wght@500;600&display=swap" rel="stylesheet">
 <style>
 :root{
   --paper:#EDEFEA; --sunk:#E2E5DD; --card:#F8F9F5;
@@ -44,12 +41,12 @@
 html,body{margin:0;padding:0;height:100%}
 body{
   background:var(--paper); color:var(--ink);
-  font-family:"Fira Sans",system-ui,-apple-system,sans-serif;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,sans-serif;
   font-size:16px; line-height:1.45;
   -webkit-text-size-adjust:100%;
   overscroll-behavior-y:none;
 }
-.meta{font-family:"Fira Sans Condensed","Fira Sans",sans-serif;font-weight:500;letter-spacing:.01em}
+.meta{font-weight:500;letter-spacing:.005em;font-variant-numeric:tabular-nums}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;background:none;border:none;padding:0}
 :focus-visible{outline:2px solid var(--eau);outline-offset:2px}
@@ -60,12 +57,14 @@ button{cursor:pointer;background:none;border:none;padding:0}
 header{
   padding:calc(env(safe-area-inset-top) + 14px) 16px 10px;
   border-bottom:1px solid var(--line);
-  display:flex;align-items:baseline;gap:10px;flex:0 0 auto;
+  display:flex;align-items:center;gap:10px;flex:0 0 auto;
 }
-h1{font-size:19px;font-weight:700;margin:0;letter-spacing:-.01em}
-.sub{font-size:12.5px;color:var(--ink-3)}
+h1{font-size:17px;font-weight:700;margin:0;letter-spacing:-.015em;white-space:nowrap}
+.sub{font-size:13px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.sub .late{color:var(--alerte)}
 .hspace{flex:1}
-.icon-btn{color:var(--ink-2);font-size:13px;padding:6px 8px;border-radius:var(--r)}
+.icon-btn{color:var(--ink-2);font-size:13px;padding:8px;margin:-8px -8px -8px 0;border-radius:var(--r);display:flex}
+.icon-btn svg,nav svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .icon-btn:hover{color:var(--ink);background:var(--sunk)}
 
 main{flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
@@ -77,10 +76,10 @@ nav{
   border-top:1px solid var(--line);background:var(--card);
   padding-bottom:env(safe-area-inset-bottom);
 }
-nav button{padding:9px 4px 10px;color:var(--ink-3);display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11.5px;border-top:2px solid transparent;margin-top:-1px}
-nav button .g{font-size:17px;line-height:1}
+nav button{padding:8px 4px 9px;color:var(--ink-3);display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:500;border-top:2px solid transparent;margin-top:-1px}
+nav button .g{line-height:0}
 nav button.on{color:var(--ink);border-top-color:var(--eau)}
-nav .badge{position:absolute;transform:translate(14px,-4px);background:var(--alerte);color:#fff;border-radius:9px;font-size:10px;padding:0 5px;line-height:15px;min-width:15px;text-align:center}
+nav .badge{position:absolute;top:-4px;left:14px;background:var(--alerte);color:#fff;border-radius:9px;font-size:10px;padding:0 5px;line-height:15px;min-width:15px;text-align:center}
 nav button span.wrap{position:relative;display:block}
 
 /* ---------- capture ---------- */
@@ -93,15 +92,20 @@ nav button span.wrap{position:relative;display:block}
 .capture button{background:var(--eau);color:var(--on-accent);border-radius:var(--r);padding:0 16px;font-weight:600}
 
 /* ---------- filter bar ---------- */
-.filters{padding:12px 16px 4px}
+.filters{padding:10px 16px 6px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips.line{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:0 16px 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.chips.line::-webkit-scrollbar{display:none}
+.chips.line .chip{flex:0 0 auto;white-space:nowrap}
+.fhead{display:flex;align-items:baseline;justify-content:space-between}
+.fhead button{color:var(--eau);font-size:12.5px}
 .chip{
-  border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:13px;color:var(--ink-2);
+  border:1px solid var(--line);border-radius:999px;padding:7px 12px;font-size:13.5px;color:var(--ink-2);
   background:transparent;
 }
 .chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .chip.ghost{border-style:dashed;color:var(--ink-3)}
-.flabel{font-size:12px;color:var(--ink-3);margin:12px 0 5px}
+.flabel{font-size:12px;color:var(--ink-3);margin:8px 0 6px}
 
 /* ---------- ledger rows ---------- */
 .section-title{
@@ -117,10 +121,11 @@ nav button span.wrap{position:relative;display:block}
 }
 .row:active{background:var(--sunk)}
 .tick{
-  flex:0 0 46px;display:flex;align-items:flex-start;justify-content:center;padding-top:15px;
+  flex:0 0 50px;display:flex;align-items:flex-start;justify-content:center;padding-top:13px;
 }
-.box{width:19px;height:19px;border:1.5px solid var(--line);border-radius:3px;display:block;background:transparent}
+.box{width:22px;height:22px;border:1.75px solid var(--ink-3);border-radius:6px;display:block;background:transparent;position:relative;transition:background .15s,border-color .15s}
 .box.done{background:var(--prairie);border-color:var(--prairie)}
+.box.done::after{content:"";position:absolute;left:6.5px;top:2.5px;width:5px;height:10px;border:solid var(--on-accent);border-width:0 2.2px 2.2px 0;transform:rotate(45deg)}
 .rbody{flex:1;padding:12px 16px 12px 0;min-width:0;text-align:left}
 .rtitle{font-size:15.5px;line-height:1.3;word-break:break-word}
 .row.is-done .rtitle{color:var(--ink-3);text-decoration:line-through}
@@ -139,8 +144,8 @@ nav button span.wrap{position:relative;display:block}
 .empty strong{display:block;color:var(--ink-2);font-weight:500;margin-bottom:4px}
 
 .notice{
-  margin:14px 16px 0;border-left:3px solid var(--bistre);background:var(--card);
-  padding:11px 13px;font-size:13.5px;color:var(--ink-2);display:flex;gap:10px;align-items:center;
+  margin:12px 16px 0;border-left:3px solid var(--bistre);background:var(--card);border-radius:0 var(--r) var(--r) 0;
+  padding:10px 12px;font-size:13.5px;color:var(--ink-2);display:flex;gap:10px;align-items:center;justify-content:space-between;
 }
 .notice button{color:var(--eau);font-weight:600;font-size:13px;white-space:nowrap}
 
@@ -231,6 +236,16 @@ nav button span.wrap{position:relative;display:block}
 .pact button.go{background:var(--eau);border-color:var(--eau);color:var(--on-accent);font-weight:600}
 .pmore{display:block;margin:12px 16px;color:var(--eau);font-size:13.5px}
 .pnow{color:var(--prairie);font-weight:500}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 72px);transform:translate(-50%,20px);opacity:0;pointer-events:none;
+  z-index:30;background:var(--ink);color:var(--paper);border-radius:8px;padding:11px 14px;font-size:14px;display:flex;gap:16px;align-items:center;
+  max-width:calc(100% - 32px);box-shadow:0 4px 16px rgba(0,0,0,.25);transition:opacity .18s,transform .18s}
+.toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toast button{color:var(--paper);font-weight:700;text-decoration:underline;white-space:nowrap}
+.fab{position:fixed;right:max(16px, calc(50% - 364px));bottom:calc(env(safe-area-inset-bottom) + 72px);z-index:20;width:54px;height:54px;border-radius:50%;
+  background:var(--eau);color:var(--on-accent);font-size:30px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,.28)}
+.fab[hidden]{display:none}
+.toast.on ~ .fab{bottom:calc(env(safe-area-inset-bottom) + 128px)}
 </style>
 </head>
 <body>
@@ -239,7 +254,7 @@ nav button span.wrap{position:relative;display:block}
     <h1>Carnet de domaine</h1>
     <span class="sub meta" id="hcount"></span>
     <span class="hspace"></span>
-    <button class="icon-btn" id="btn-settings">Réglages</button>
+    <button class="icon-btn" id="btn-settings" aria-label="Réglages"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   </header>
 
   <main>
@@ -247,10 +262,10 @@ nav button span.wrap{position:relative;display:block}
     <section class="pane on" id="pane-now">
       <div id="backup-notice"></div>
       <div class="filters">
-        <div class="flabel">Conditions réunies</div>
-        <div class="chips" id="now-ctx"></div>
+        <div class="fhead"><div class="flabel">Conditions réunies</div><button id="f-clear" hidden>Tout afficher</button></div>
+        <div class="chips line" id="now-ctx"></div>
         <div class="flabel">Temps disponible</div>
-        <div class="chips" id="now-cost"></div>
+        <div class="chips line" id="now-cost"></div>
       </div>
       <div id="now-list"></div>
     </section>
@@ -258,7 +273,7 @@ nav button span.wrap{position:relative;display:block}
     <!-- LISTE -->
     <section class="pane" id="pane-all">
       <div class="capture">
-        <input id="cap" type="text" placeholder="Noter une tâche, puis Entrée" autocomplete="off" enterkeyhint="done">
+        <input id="cap" type="search" placeholder="Noter une tâche, ou chercher" autocomplete="off" enterkeyhint="done">
         <button id="cap-go">Noter</button>
       </div>
       <div id="review-notice"></div>
@@ -286,14 +301,16 @@ nav button span.wrap{position:relative;display:block}
   </main>
 
   <nav>
-    <button data-tab="now" class="on"><span class="g">◈</span>Maintenant</button>
-    <button data-tab="all"><span class="wrap g">☰<i class="badge" id="b-inbox" hidden></i></span>Liste</button>
-    <button data-tab="map"><span class="g">◎</span>Carte</button>
-    <button data-tab="city"><span class="wrap g">⌂<i class="badge" id="b-city" hidden></i></span>En ville</button>
-    <button data-tab="wait"><span class="wrap g">⧗<i class="badge" id="b-wait" hidden></i></span>Attente</button>
+    <button data-tab="now" class="on"><span class="g"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></span>Maintenant</button>
+    <button data-tab="all"><span class="wrap g"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m3.5 6 1 1 2-2M3.5 12l1 1 2-2"/><circle cx="5" cy="18" r=".8"/></svg><i class="badge" id="b-inbox" hidden></i></span>Liste</button>
+    <button data-tab="map"><span class="g"><svg viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg></span>Carte</button>
+    <button data-tab="city"><span class="wrap g"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><i class="badge" id="b-city" hidden></i></span>En ville</button>
+    <button data-tab="wait"><span class="wrap g"><svg viewBox="0 0 24 24"><path d="M6 3h12M6 21h12M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9"/></svg><i class="badge" id="b-wait" hidden></i></span>Attente</button>
   </nav>
 </div>
 
+<div class="toast" id="toast" role="status"></div>
+<button class="fab" id="fab" aria-label="Noter une tâche">+</button>
 <div class="scrim" id="scrim"></div>
 <div class="sheet" id="sheet"></div>
 
@@ -355,7 +372,7 @@ nav button span.wrap{position:relative;display:block}
 "use strict";
 /* ============ état ============ */
 var KEY = "carnet-domaine.v1";
-var VERSION = "1.8";
+var VERSION = "1.9";
 var PLAN = null;   /* aucun plan livré : il est importé sur l'appareil et reste en local */
 var DEFAULT_CTX = ["Appels & mails","Par temps sec","Atelier","Tracteur & engins","Bétail","Écran & administratif","Courses & déplacements","En ville"];
 var COSTS = [{k:"5m",l:"5 min"},{k:"1h",l:"1 h"},{k:"dj",l:"Demi-journée"}];
@@ -393,7 +410,7 @@ var MOIS = ["jan","fév","mars","avr","mai","juin","juil","août","sept","oct","
 
 var S = { tasks:[], ctxs:DEFAULT_CTX.slice(), map:null, lastReview:null, lastExport:null, dismissed:[], closed:[] };
 var P = { generated:null, items:[] };   /* propositions en attente, hors de la sauvegarde : on les réimporte depuis le fichier */
-var UI = { tab:"now", ctxFilter:[], costFilter:null, natFilter:[], zoom:1, placing:null, addHere:false, selPin:null, pOpen:false, pSrc:"", pLimit:30 };
+var UI = { q:"", tab:"now", ctxFilter:[], costFilter:null, natFilter:[], zoom:1, placing:null, addHere:false, selPin:null, pOpen:false, pSrc:"", pLimit:30 };
 
 function mkState(d){
   return { tasks:d.tasks||[], ctxs:(d.ctxs&&d.ctxs.length?d.ctxs:DEFAULT_CTX.slice()), map:d.map||null,
@@ -605,20 +622,23 @@ function propsHTML(){
   if(!P.items.length) return "";
   var h = '<div class="section-title meta"><button class="ptog" data-p="toggle">'+(UI.pOpen?"▾":"▸")+
           ' Propositions <span class="n">'+P.items.length+'</span></button></div>';
-  if(!UI.pOpen) return h;
+  var q = UI.q.trim();
+  if(!UI.pOpen && !q) return h;
   if(P.generated){
     var age = daysBetween(P.generated, today());
     if(age>30) h += '<div class="notice"><span>Ces propositions datent de '+age+' jours : les feuilles ont pu changer. Régénérez le fichier avant de vous y fier.</span></div>';
   }
   var counts = {};
   P.items.forEach(function(it){ counts[it.src]=(counts[it.src]||0)+1; });
-  h += '<div class="filters"><div class="chips">'+
+  h += '<div class="filters"><div class="chips line">'+
        '<button class="chip'+(UI.pSrc===""?" on":"")+'" data-p="src" data-src="">Toutes</button>'+
        SRCS.filter(function(x){ return counts[x.k]; }).map(function(x){
          return '<button class="chip'+(UI.pSrc===x.k?" on":"")+'" data-p="src" data-src="'+x.k+'">'+esc(x.l)+' '+counts[x.k]+'</button>';
        }).join("")+'</div></div>';
-  var list = P.items.filter(function(it){ return !UI.pSrc || it.src===UI.pSrc; }).sort(propSort);
-  h += '<div class="help" style="padding:8px 16px 0">Rien ici n\'est une tâche tant que vous ne la prenez pas. « Écarter » la retire pour de bon (réaffichable dans les Réglages).</div>';
+  var list = P.items.filter(function(it){ return (!UI.pSrc || it.src===UI.pSrc) && matchQ(it); }).sort(propSort);
+  if(q && !list.length) return "";
+  if(q) h = '<div class="section-title meta">Propositions <span class="n">'+list.length+'</span></div>';
+  else h += '<div class="help" style="padding:4px 16px 0">« Prendre » en fait une tâche ; « Écarter » la retire pour de bon.</div>';
   h += list.slice(0, UI.pLimit).map(propRowHTML).join("");
   if(list.length>UI.pLimit) h += '<button class="pmore" data-p="more">Afficher la suite ('+(list.length-UI.pLimit)+' de plus)</button>';
   return h;
@@ -641,6 +661,32 @@ function reportText(){
   return out.join("\n");
 }
 
+/* ============ recherche et annulation ============ */
+function norm(x){
+  x = String(x||"").toLowerCase();
+  try{ x = x.normalize("NFD").replace(/[\u0300-\u036f]/g,""); }catch(e){}
+  return x;
+}
+function matchQ(o){
+  var q = norm(UI.q).trim(); if(!q) return true;
+  return norm(o.title+" "+(o.note||"")+" "+(o.ref||"")).indexOf(q)>=0;
+}
+var UNDO = null, UNDO_T = null;
+function snap(){ return { tasks:JSON.stringify(S.tasks), dismissed:S.dismissed.slice(), closed:S.closed.slice(), props:JSON.stringify(P) }; }
+function toast(msg, s){
+  UNDO = s || null;
+  var el = document.getElementById("toast");
+  el.innerHTML = '<span>'+esc(msg)+'</span>'+(s?'<button id="undo">Annuler</button>':'');
+  el.classList.add("on");
+  clearTimeout(UNDO_T);
+  UNDO_T = setTimeout(function(){ el.classList.remove("on"); UNDO = null; }, 5000);
+}
+function undo(){
+  if(!UNDO) return;
+  S.tasks = JSON.parse(UNDO.tasks); S.dismissed = UNDO.dismissed; S.closed = UNDO.closed; P = JSON.parse(UNDO.props);
+  UNDO = null; save(); saveProps(); render();
+  document.getElementById("toast").classList.remove("on");
+}
 function byId(id){ for(var i=0;i<S.tasks.length;i++) if(S.tasks[i].id===id) return S.tasks[i]; return null; }
 function toggleDone(t){
   if(t.status==="done"){ t.status="todo"; t.doneAt=null; save(); render(); return; }
@@ -719,6 +765,7 @@ function renderNow(){
     return true;
   }).sort(sortTasks);
 
+  document.getElementById("f-clear").hidden = !(UI.ctxFilter.length || UI.costFilter);
   var el = document.getElementById("now-list");
   if(!list.length){
     el.innerHTML = '<div class="empty"><strong>Rien ne correspond</strong>Élargissez les conditions, ou notez une tâche dans la Liste.</div>';
@@ -729,16 +776,22 @@ function renderNow(){
 
 /* ============ onglet LISTE ============ */
 function renderAll(){
-  var todo = S.tasks.filter(function(t){ return t.status==="todo"; });
+  var todo = S.tasks.filter(function(t){ return t.status==="todo" && matchQ(t); });
   var inb = todo.filter(function(t){ return t.ctx.length===0 && !t.due; });
   var rest = todo.filter(function(t){ return inb.indexOf(t)<0; }).sort(sortTasks);
-  var done = S.tasks.filter(function(t){ return t.status==="done"; })
+  var done = S.tasks.filter(function(t){ return t.status==="done" && matchQ(t); })
                     .sort(function(a,b){ return b.doneAt-a.doneAt; }).slice(0,15);
 
   var h = propsHTML();
   h += sectionHTML("À clarifier", inb.sort(sortTasks), "Quelle est la prochaine action concrète ? Ouvrez la ligne et donnez-lui au moins une condition.");
   h += sectionHTML("À faire", rest);
   h += sectionHTML("Terminé récemment", done);
+  if(UI.q.trim()){
+    var wt = S.tasks.filter(function(t){ return t.status==="waiting" && matchQ(t); });
+    h += sectionHTML("En attente", wt);
+    if(!todo.length && !done.length && !wt.length && h.indexOf("prow")<0)
+      h += '<div class="empty"><strong>Rien ne correspond</strong>Touchez « Noter » pour en faire une tâche.</div>';
+  }
   if(!S.tasks.length){
     h += '<div class="empty"><strong>Carnet vide</strong>Notez tout ce qui traîne en tête, sans trier. Le classement vient après.</div>';
   }
@@ -747,7 +800,7 @@ function renderAll(){
   var rn = document.getElementById("review-notice");
   var stale = !S.lastReview || daysBetween(S.lastReview, today()) >= 7;
   rn.innerHTML = (stale && S.tasks.length>4)
-    ? '<div class="notice"><span>Revue hebdomadaire en retard. Relisez la liste entière, c\'est ce qui empêche le carnet de pourrir.</span><button id="rev-ok">Faite</button></div>'
+    ? '<div class="notice"><span>Revue de la semaine : relisez toute la liste.</span><button id="rev-ok">Faite</button></div>'
     : "";
 }
 
@@ -849,7 +902,7 @@ function render(){
 
   var open = S.tasks.filter(function(t){ return t.status==="todo"; }).length;
   var od = S.tasks.filter(function(t){ return t.status==="todo" && t.due && daysBetween(today(),t.due)<0; }).length;
-  document.getElementById("hcount").textContent = open+" ouverte"+(open>1?"s":"")+(od?" · "+od+" en retard":"");
+  document.getElementById("hcount").innerHTML = open+" ouverte"+(open>1?"s":"")+(od?' · <span class="late">'+od+" retard</span>":"");
 
   renderNow(); renderAll(); renderCity(); renderWait(); renderMap(); renderBackupNotice();
 }
@@ -1039,11 +1092,21 @@ function openSettings(){
   };
 }
 function doExport(){
+  var prev = S.lastExport;
   S.lastExport = today();   /* avant la sérialisation : le fichier porte sa propre date */
-  var blob = new Blob([JSON.stringify(S)], {type:"application/json"});
+  var name = "carnet-domaine-"+today()+".json", data = JSON.stringify(S), file = null;
+  /* Sur iPhone : feuille de partage (Drive, Fichiers…). Sinon : téléchargement. */
+  try{ file = new File([data], name, {type:"application/json"}); }catch(e){ file = null; }
+  if(file && navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+    navigator.share({files:[file], title:name}).then(function(){
+      save(); render(); toast("Sauvegarde exportée");
+    }).catch(function(){ S.lastExport = prev; render(); });
+    return;
+  }
+  var blob = new Blob([data], {type:"application/json"});
   var a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "carnet-domaine-"+today()+".json";
+  a.download = name;
   document.body.appendChild(a); a.click();
   setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
   save(); render();
@@ -1109,9 +1172,9 @@ function renderBackupNotice(){
   var days = S.lastExport ? daysBetween(S.lastExport, today()) : null;
   if(days !== null && days < 14){ el.innerHTML = ""; return; }
   var msg = S.lastExport
-    ? "Derni\u00e8re sauvegarde il y a "+days+" j."
-    : "Aucune sauvegarde n'a encore \u00e9t\u00e9 faite.";
-  el.innerHTML = "<div class=\"notice\"><span>"+msg+" Les t\u00e2ches ne vivent que sur cet appareil \u2014 un changement de t\u00e9l\u00e9phone ou un passage en navigation priv\u00e9e les efface.</span><button id=\"bak-now\">Exporter maintenant</button></div>";
+    ? "Derni\u00e8re sauvegarde il y a "+days+" j"
+    : "Aucune sauvegarde faite";
+  el.innerHTML = "<div class=\"notice\"><span>"+msg+" \u2014 les t\u00e2ches ne vivent que sur ce t\u00e9l\u00e9phone.</span><button id=\"bak-now\">Exporter</button></div>";
 }
 
 /* ============ import du plan ============ */
@@ -1142,6 +1205,7 @@ function go(tab){
   document.getElementById("pane-"+tab).classList.add("on");
   document.querySelectorAll("nav button").forEach(function(b){ b.classList.toggle("on", b.dataset.tab===tab); });
   document.querySelector("main").scrollTop = 0;
+  document.getElementById("fab").hidden = (tab==="all" || tab==="map");
   render();
 }
 
@@ -1158,10 +1222,17 @@ function capture(){
   var i = document.getElementById("cap");
   var v = i.value.trim();
   if(!v) return;
-  newTask(v); i.value = ""; render();
+  newTask(v); i.value = ""; UI.q = ""; render();
+  toast("Notée : « "+v+" »");
 }
 document.getElementById("cap-go").addEventListener("click", capture);
-document.getElementById("cap").addEventListener("keydown", function(e){ if(e.key==="Enter") capture(); });
+document.getElementById("cap").addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); capture(); } });
+document.getElementById("cap").addEventListener("input", function(){ UI.q = this.value; renderAll(); });
+document.getElementById("fab").addEventListener("click", function(){
+  go("all"); var c = document.getElementById("cap"); c.focus();
+});
+document.getElementById("toast").addEventListener("click", function(e){ if(e.target.closest("#undo")) undo(); });
+document.getElementById("f-clear").addEventListener("click", function(){ UI.ctxFilter = []; UI.costFilter = null; renderNow(); });
 
 document.querySelector("main").addEventListener("click", function(e){
   var pb = e.target.closest("[data-p]");
@@ -1170,11 +1241,8 @@ document.querySelector("main").addEventListener("click", function(e){
     if(pa==="toggle"){ UI.pOpen = !UI.pOpen; renderAll(); return; }
     if(pa==="src"){ UI.pSrc = pb.dataset.src || ""; UI.pLimit = 30; renderAll(); return; }
     if(pa==="more"){ UI.pLimit += 30; renderAll(); return; }
-    if(pa==="take"){ takeProp(pb.dataset.ref); render(); return; }
-    if(pa==="skip"){
-      if(confirm("Écarter cette proposition ? Elle ne reviendra plus à l'importation.")){ dismissProp(pb.dataset.ref); render(); }
-      return;
-    }
+    if(pa==="take"){ var s1 = snap(); takeProp(pb.dataset.ref); render(); toast("Ajoutée à vos tâches", s1); return; }
+    if(pa==="skip"){ var s2 = snap(); dismissProp(pb.dataset.ref); render(); toast("Proposition écartée", s2); return; }
   }
   var rev = e.target.closest("#rev-ok");
   if(rev){ S.lastReview = today(); save(); render(); return; }
@@ -1224,7 +1292,11 @@ document.querySelector("main").addEventListener("click", function(e){
   if(row){
     var act = e.target.closest("[data-act]");
     var t = byId(row.dataset.id); if(!t) return;
-    if(act && act.dataset.act==="tick"){ toggleDone(t); return; }
+    if(act && act.dataset.act==="tick"){
+      if(t.status==="done"){ toggleDone(t); return; }
+      var s3 = snap(); toggleDone(t);
+      toast("Terminée : « "+t.title+" »"+(t.recur?" — la suivante est créée":""), s3); return;
+    }
     openTask(t.id); return;
   }
 });

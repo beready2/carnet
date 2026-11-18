@@ -74,8 +74,9 @@ Syntaxe ES5 voulue, pour Safari iOS : `var` et `function`, pas de `let` ni `cons
 fonctions fléchées, de `?.`, de `??` ni de gabarits à apostrophes inversées.
 Interface en français. Les couleurs de l'interface passent par les variables CSS et suivent le
 thème clair ou sombre ; seules les punaises du plan ont des couleurs fixes, car elles se posent
-sur une photo. La seule ressource externe est la police Google, non mise en cache (repli sur la
-police du système hors ligne).
+sur une photo. Depuis la 1.9, aucune ressource externe : police du système, icônes tracées en SVG
+dans la page. Ne pas réintroduire de police ni de script tiers (requête réseau à chaque ouverture,
+rendu différent hors ligne).
 
 ## Vérification
 Il n'y a pas de tests automatisés. Avant tout dépôt :
@@ -84,6 +85,10 @@ Il n'y a pas de tests automatisés. Avant tout dépôt :
 2. Dans l'application : noter une tâche, la cocher (si elle est récurrente, la suivante doit se
    recréer), la dupliquer, importer un plan et y poser une punaise, exporter puis restaurer, couper
    le réseau et recharger.
-3. Propositions, avec un fichier inventé : importer deux fois (la seconde fois, aucun doublon),
+3. Depuis la 1.9 : la saisie de la Liste filtre aussi (tâches et propositions, sans tenir compte des
+   accents) ; Entrée crée la tâche. Cocher, prendre et écarter s'annulent pendant 5 s par le bandeau
+   « Annuler » (aucune confirmation). L'export ouvre la feuille de partage quand le navigateur sait
+   partager un fichier, sinon il télécharge : vérifier les deux.
+4. Propositions, avec un fichier inventé : importer deux fois (la seconde fois, aucun doublon),
    prendre une proposition, en écarter une, réimporter (ni l'une ni l'autre ne revient), cocher la
    tâche prise et lire la liste « à reporter », essayer un fichier au mauvais schéma.

@@ -1,6 +1,6 @@
 /* Carnet de domaine — fonctionnement hors ligne.
    Incrémentez CACHE à chaque mise à jour des fichiers pour forcer le rafraîchissement. */
-var CACHE = "carnet-domaine-v10";
+var CACHE = "carnet-domaine-v11";
 var SHELL = [
   "./",
   "./index.html",
