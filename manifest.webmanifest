@@ -1,0 +1,17 @@
+{
+  "name": "Carnet de domaine",
+  "short_name": "Domaine",
+  "description": "Tâches du domaine classées par condition d'exécution, avec plan des punaises.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#141816",
+  "theme_color": "#141816",
+  "lang": "fr",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "./icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
