@@ -355,7 +355,7 @@ nav button span.wrap{position:relative;display:block}
 "use strict";
 /* ============ état ============ */
 var KEY = "carnet-domaine.v1";
-var VERSION = "1.7";
+var VERSION = "1.8";
 var PLAN = null;   /* aucun plan livré : il est importé sur l'appareil et reste en local */
 var DEFAULT_CTX = ["Appels & mails","Par temps sec","Atelier","Tracteur & engins","Bétail","Écran & administratif","Courses & déplacements","En ville"];
 var COSTS = [{k:"5m",l:"5 min"},{k:"1h",l:"1 h"},{k:"dj",l:"Demi-journée"}];
@@ -414,17 +414,38 @@ function load(){
     if(S.ctxs.indexOf("En ville")<0){ S.ctxs.push("En ville"); save(); }
   }catch(e){ /* données illisibles : on repart propre */ }
 }
-function saveProps(){
-  try{ localStorage.setItem(PKEY, JSON.stringify(P)); }
-  catch(e){ alert("Sauvegarde des propositions impossible : mémoire du navigateur pleine."); }
+function saveProps(quiet){
+  try{
+    var s = JSON.stringify(P);
+    localStorage.setItem(PKEY, s);
+    if(localStorage.getItem(PKEY)!==s) throw new Error("relecture différente");
+    return true;
+  }catch(e){
+    if(!quiet) alert("Les propositions n'ont PAS pu être enregistrées sur cet appareil ("+(e&&e.name?e.name:"erreur")+"). Elles disparaîtront à la fermeture. Voir Réglages, espace du site.");
+    return false;
+  }
 }
+var PSTATE = "absent";   /* état de la clé des propositions au démarrage : absent, présent, illisible */
 function loadProps(){
   try{
     var raw = localStorage.getItem(PKEY);
     if(!raw) return;
+    PSTATE = "illisible";
     var d = JSON.parse(raw);
-    if(d && d.items && d.items.length!==undefined) P = { generated:d.generated||null, items:d.items };
+    if(d && d.items && d.items.length!==undefined){ P = { generated:d.generated||null, items:d.items }; PSTATE = "présent"; }
   }catch(e){ /* propositions illisibles : on repart sans */ }
+}
+function siteBytes(){
+  var tot = 0, mine = 0, props = 0;
+  try{
+    for(var i=0;i<localStorage.length;i++){
+      var k = localStorage.key(i), n = k.length + (localStorage.getItem(k)||"").length;
+      tot += n;
+      if(k===KEY) mine = n;
+      if(k===PKEY) props = n;
+    }
+  }catch(e){}
+  return { total:tot, mine:mine, props:props };
 }
 
 /* ============ dates ============ */
@@ -526,7 +547,7 @@ function importPropsText(text){
     P.items.push(c); res.added++;
   });
   if(!P.generated || d.generated>P.generated) P.generated = d.generated;
-  saveProps();
+  res.saved = saveProps(true);
   return res;
 }
 function propFind(ref){ for(var i=0;i<P.items.length;i++) if(P.items[i].ref===ref) return i; return -1; }
@@ -960,11 +981,13 @@ function commit(t, sheet){
 
 /* ============ réglages ============ */
 function openSettings(){
-  var bytes = 0;
-  try{ bytes = (localStorage.getItem(KEY)||"").length; }catch(e){}
+  var sb = siteBytes(), bytes = sb.mine;
   var h = '<div class="sheet-head"><h2>Réglages</h2><button data-s="close">Fermer</button></div>';
   h += '<div class="kv"><span>Tâches enregistrées</span><b>'+S.tasks.length+'</b></div>';
-  h += '<div class="kv"><span>Espace utilisé</span><b>'+(bytes/1048576).toFixed(2)+' Mo</b></div>';
+  h += '<div class="kv"><span>Espace utilisé (tâches, plan)</span><b>'+(bytes/1048576).toFixed(2)+' Mo</b></div>';
+  h += '<div class="kv"><span>Espace des propositions</span><b>'+(sb.props/1048576).toFixed(2)+' Mo</b></div>';
+  h += '<div class="kv"><span>Espace du site, toutes applications</span><b>'+(sb.total/1048576).toFixed(2)+' Mo</b></div>';
+  h += '<div class="kv"><span>Propositions au démarrage</span><b>'+PSTATE+'</b></div>';
   h += '<div class="kv"><span>Dernière revue</span><b>'+(S.lastReview?frDate(S.lastReview):"jamais")+'</b></div>';
   h += '<div class="kv"><span>Plan</span><b>'+(S.map?"importé":"aucun")+'</b></div>';
   h += '<div class="kv"><span>Propositions en attente</span><b>'+P.items.length+(P.generated?" · fichier du "+frDate(P.generated):"")+'</b></div>';
@@ -1029,7 +1052,8 @@ function doExport(){
 function showImportResult(r){
   if(r.error){ alert(r.error); return; }
   alert("Propositions : "+r.added+" nouvelle"+(r.added>1?"s":"")+", "+r.updated+" mise"+(r.updated>1?"s":"")+" à jour, "+
-        r.skipped+" ignorée"+(r.skipped>1?"s":"")+" (déjà prises ou écartées), "+r.rejected+" rejetée"+(r.rejected>1?"s":"")+".");
+        r.skipped+" ignorée"+(r.skipped>1?"s":"")+" (déjà prises ou écartées), "+r.rejected+" rejetée"+(r.rejected>1?"s":"")+"."+
+        (r.saved ? "\nEnregistrées sur l'appareil : oui." : "\nATTENTION : NON enregistrées sur l'appareil, elles disparaîtront à la fermeture. Voir Réglages, espace du site."));
   UI.pOpen = true; UI.pLimit = 30; closeSheet(); go("all");
 }
 function openPasteProps(){
@@ -1259,6 +1283,7 @@ document.getElementById("file-props").addEventListener("change", function(){
 load();
 loadProps();
 render();
+try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function(){}); }catch(e){}
 
 /* ============ service worker : fonctionnement hors ligne ============ */
 if("serviceWorker" in navigator && location.protocol !== "file:"){

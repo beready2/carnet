@@ -54,6 +54,9 @@ aucune feuille et n'écrit dans aucune : elle importe un fichier JSON préparé 
 - Le fichier de propositions contient des données réelles : il ne vit jamais dans ce dépôt (ni
   `carnet-propositions-*.json`, ni extrait collé dans le code, un commentaire, un test ou un message
   de commit). Le `.gitignore` aide pour git, pas pour le téléversement web.
+- Depuis la 1.8, l'enregistrement des propositions est relu après écriture : l'import dit si elles sont
+  enregistrées sur l'appareil, et Réglages affiche l'espace utilisé par le site, toutes applications
+  confondues, et l'état de la clé au démarrage (présent, absent, illisible).
 - Tout jeu d'essai du dépôt ou de la vérification est inventé et générique.
 
 ## Après toute modification des fichiers servis
