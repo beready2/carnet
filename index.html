@@ -177,10 +177,21 @@ nav button span.wrap{position:relative;display:block}
 .pin.u4{color:#48534C}
 .pin.sel{outline:3px solid #8FBF4A;outline-offset:2px}
 .pinlabel{
-  position:absolute;transform:translate(-50%,6px);white-space:nowrap;
-  background:var(--card);border:1px solid var(--line);border-radius:3px;
-  padding:1px 5px;font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;
+  position:absolute;transform:translate(-50%,6px);white-space:nowrap;z-index:3;
+  background:var(--card);border:1px solid var(--line);border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.3);
+  padding:5px 6px 5px 9px;font-size:12.5px;display:flex;gap:8px;align-items:center;
 }
+.pinlabel span{max-width:150px;overflow:hidden;text-overflow:ellipsis}
+.pinlabel button{border:1px solid var(--line);border-radius:5px;padding:5px 9px;font-size:12.5px;color:var(--ink-2)}
+.pinlabel button.go{background:var(--prairie);border-color:var(--prairie);color:var(--on-accent);font-weight:600}
+.gfilter{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--line-soft);font-size:13.5px}
+.gfilter button{color:var(--eau);font-weight:600;font-size:13px;white-space:nowrap}
+.gcount{min-width:24px;height:22px;padding:0 5px;border-radius:6px;border:1.75px solid var(--ink-3);font-size:12px;font-weight:700;color:var(--ink-2);display:flex;align-items:center;justify-content:center}
+.chev{color:var(--ink-3);font-size:12px;margin-left:4px}
+.row.gsub{background:var(--card)}
+.row.gsub .gutter{margin-left:22px}
+.gbar{padding:9px 16px 9px 77px;background:var(--card);border-bottom:1px solid var(--line-soft)}
+.gbar button{color:var(--eau);font-size:13.5px;font-weight:600}
 .rmeta svg{width:13px;height:13px;vertical-align:-2px;fill:none;stroke:var(--ink-2);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .mapfilter{display:flex;gap:6px;overflow-x:auto;padding:9px 16px;border-bottom:1px solid var(--line-soft);-webkit-overflow-scrolling:touch}
 .mapfilter:empty{display:none}
@@ -372,7 +383,7 @@ nav button span.wrap{position:relative;display:block}
 "use strict";
 /* ============ état ============ */
 var KEY = "carnet-domaine.v1";
-var VERSION = "1.9";
+var VERSION = "1.10";
 var PLAN = null;   /* aucun plan livré : il est importé sur l'appareil et reste en local */
 var DEFAULT_CTX = ["Appels & mails","Par temps sec","Atelier","Tracteur & engins","Bétail","Écran & administratif","Courses & déplacements","En ville"];
 var COSTS = [{k:"5m",l:"5 min"},{k:"1h",l:"1 h"},{k:"dj",l:"Demi-journée"}];
@@ -410,7 +421,7 @@ var MOIS = ["jan","fév","mars","avr","mai","juin","juil","août","sept","oct","
 
 var S = { tasks:[], ctxs:DEFAULT_CTX.slice(), map:null, lastReview:null, lastExport:null, dismissed:[], closed:[] };
 var P = { generated:null, items:[] };   /* propositions en attente, hors de la sauvegarde : on les réimporte depuis le fichier */
-var UI = { q:"", tab:"now", ctxFilter:[], costFilter:null, natFilter:[], zoom:1, placing:null, addHere:false, selPin:null, pOpen:false, pSrc:"", pLimit:30 };
+var UI = { q:"", gOpen:{}, mapGroup:null, tab:"now", ctxFilter:[], costFilter:null, natFilter:[], zoom:1, placing:null, addHere:false, selPin:null, pOpen:false, pSrc:"", pLimit:30 };
 
 function mkState(d){
   return { tasks:d.tasks||[], ctxs:(d.ctxs&&d.ctxs.length?d.ctxs:DEFAULT_CTX.slice()), map:d.map||null,
@@ -728,7 +739,44 @@ function rowHTML(t){
     '</button></div>';
 }
 function costLabel(k){ for(var i=0;i<COSTS.length;i++) if(COSTS[i].k===k) return COSTS[i].l; return ""; }
-function listHTML(arr){ return arr.map(rowHTML).join(""); }
+/* Tâches de même intitulé (ex. plusieurs zones à débroussailler, chacune avec sa punaise) :
+   une seule ligne dans les listes, dépliable ; chaque tâche reste distincte et se coche seule. */
+function gkey(t){ return norm(t.title).replace(/\s+/g," ").trim(); }
+function grouped(arr){
+  var by = {}, seen = {}, out = [];
+  arr.forEach(function(t){ var k = gkey(t); (by[k] = by[k] || []).push(t); });
+  arr.forEach(function(t){
+    var k = gkey(t);
+    if(by[k].length < 2){ out.push(t); return; }
+    if(seen[k]) return;
+    seen[k] = 1; out.push({ key:k, tasks:by[k] });
+  });
+  return out;
+}
+function groupHTML(g){
+  var f = g.tasks[0], open = !!UI.gOpen[g.key];
+  var u = Math.min.apply(null, g.tasks.map(urgency));
+  var pins = g.tasks.filter(function(t){ return t.pin && t.status!=="done"; }).length;
+  var todo = g.tasks.filter(function(t){ return t.status!=="done"; }).length;
+  var dt = dueText(f), meta = [];
+  meta.push('<b>'+(todo ? todo+" à faire" : g.tasks.length+" faites")+'</b>');
+  if(dt) meta.push('<b class="'+dt.cls+'">'+esc(dt.txt)+'</b>');
+  if(f.cost) meta.push(costLabel(f.cost));
+  if(f.nature) meta.push(glyph(f.nature)+" "+esc(natLabel(f.nature)));
+  if(pins) meta.push('<span class="pinmark">◉ '+pins+' sur le plan</span>');
+  var h = '<div class="row grp u'+u+'" data-g="'+esc(g.key)+'"><div class="gutter"></div>'+
+    '<button class="tick" data-gact="toggle" aria-label="Déplier"><span class="gcount">'+g.tasks.length+'</span></button>'+
+    '<button class="rbody" data-gact="toggle"><div class="rtitle">'+esc(f.title)+'<span class="chev">'+(open?"▾":"▸")+'</span></div>'+
+    '<div class="rmeta meta">'+meta.join("")+'</div></button></div>';
+  if(open){
+    if(pins) h += '<div class="gbar"><button data-gact="map" data-g="'+esc(g.key)+'">Voir les '+pins+' sur le plan</button></div>';
+    h += g.tasks.map(function(t){ return rowHTML(t).replace('<div class="row ','<div class="row gsub '); }).join("");
+  }
+  return h;
+}
+function listHTML(arr){
+  return grouped(arr).map(function(x){ return x.tasks ? groupHTML(x) : rowHTML(x); }).join("");
+}
 function sectionHTML(title, arr, note){
   if(!arr.length) return "";
   return '<div class="section-title meta">'+esc(title)+' <span class="n">'+arr.length+'</span></div>'+
@@ -860,6 +908,13 @@ function renderMap(){
     '<button class="btn-s" id="imp2">Changer de plan</button>';
 
   var all = S.tasks.filter(function(t){ return t.pin && t.status!=="done"; });
+  var gTitle = "";
+  if(UI.mapGroup){
+    var ga = all.filter(function(t){ return gkey(t)===UI.mapGroup; });
+    if(ga.length){ all = ga; gTitle = ga[0].title; } else { UI.mapGroup = null; }
+  }
+  if(gTitle && !UI.placing && !UI.addHere)
+    place.innerHTML = '<div class="gfilter"><span>'+esc(gTitle)+' — '+all.length+' à faire</span><button id="mg-clear">Tout afficher</button></div>';
 
   /* Le filtre ne propose que les natures reellement posees sur le plan. */
   var used = [];
@@ -869,7 +924,7 @@ function renderMap(){
     NATURES.forEach(function(n,i){ if(n.k===a) oa=i; if(n.k===b) ob=i; });
     return oa-ob;
   });
-  document.getElementById("mapfilter").innerHTML = used.length>1
+  document.getElementById("mapfilter").innerHTML = (used.length>1 && !gTitle)
     ? used.map(function(n){
         return '<button class="chip'+(UI.natFilter.indexOf(n)>=0?" on":"")+'" data-natf="'+n+'">'+
                glyph(n)+esc(natLabel(n))+'</button>';
@@ -885,7 +940,8 @@ function renderMap(){
     pins.map(function(t){
       var sel = UI.selPin===t.id;
       return '<div class="pin u'+urgency(t)+(sel?" sel":"")+'" data-pin="'+t.id+'" style="left:'+(t.pin.x*100)+'%;top:'+(t.pin.y*100)+'%">'+glyph(t.nature)+'</div>'+
-             (sel?'<div class="pinlabel meta" style="left:'+(t.pin.x*100)+'%;top:'+(t.pin.y*100)+'%">'+esc(t.title)+'</div>':'');
+             (sel?'<div class="pinlabel" style="left:'+(t.pin.x*100)+'%;top:'+(t.pin.y*100)+'%"><span>'+esc(t.title)+'</span>'+
+                  '<button class="go" data-pinact="done" data-id="'+t.id+'">✓ Fait</button><button data-pinact="open" data-id="'+t.id+'">Fiche</button></div>':'');
     }).join("");
 }
 
@@ -1264,6 +1320,24 @@ document.querySelector("main").addEventListener("click", function(e){
     UI.zoom = z.dataset.zoom==="+" ? Math.min(4, UI.zoom+0.5) : Math.max(1, UI.zoom-0.5);
     renderMap(); return;
   }
+
+  var gb = e.target.closest("[data-gact]");
+  if(gb){
+    var gk = gb.dataset.g || gb.closest("[data-g]").dataset.g;
+    if(gb.dataset.gact==="toggle"){ UI.gOpen[gk] = !UI.gOpen[gk]; render(); }
+    else { UI.mapGroup = gk; UI.natFilter = []; UI.selPin = null; go("map"); }
+    return;
+  }
+  var pa2 = e.target.closest("[data-pinact]");
+  if(pa2){
+    var pt = byId(pa2.dataset.id); if(!pt) return;
+    if(pa2.dataset.pinact==="open"){ UI.selPin = null; openTask(pt.id); renderMap(); return; }
+    var s4 = snap(); UI.selPin = null; toggleDone(pt);
+    toast("Fait : « "+pt.title+" »"+(pt.recur?" — la suivante est créée":""), s4);
+    return;
+  }
+  var mgc = e.target.closest("#mg-clear");
+  if(mgc){ UI.mapGroup = null; UI.selPin = null; renderMap(); return; }
 
   var pin = e.target.closest("[data-pin]");
   if(pin){

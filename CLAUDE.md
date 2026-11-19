@@ -89,6 +89,9 @@ Il n'y a pas de tests automatisés. Avant tout dépôt :
    accents) ; Entrée crée la tâche. Cocher, prendre et écarter s'annulent pendant 5 s par le bandeau
    « Annuler » (aucune confirmation). L'export ouvre la feuille de partage quand le navigateur sait
    partager un fichier, sinon il télécharge : vérifier les deux.
-4. Propositions, avec un fichier inventé : importer deux fois (la seconde fois, aucun doublon),
+4. Depuis la 1.10 : des tâches de même intitulé (casse, accents et espaces ignorés) forment une seule
+   ligne dépliable ; chacune se coche seule. « Voir sur le plan » ne montre que leurs punaises ; une
+   punaise touchée affiche « Fait » et « Fiche ». Vérifier qu'en cocher une laisse les autres.
+5. Propositions, avec un fichier inventé : importer deux fois (la seconde fois, aucun doublon),
    prendre une proposition, en écarter une, réimporter (ni l'une ni l'autre ne revient), cocher la
    tâche prise et lire la liste « à reporter », essayer un fichier au mauvais schéma.
